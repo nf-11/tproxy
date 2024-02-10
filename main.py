@@ -14,12 +14,13 @@ async def main():
     addr = config.get('Proxy', 'assign_loopback_from')
     addr = int.from_bytes(socket.inet_aton(addr), byteorder='big')
     tasks = []
+    upstream_proxy_type = config.get('Proxy', 'proxy_type')
     print('# PASTE THIS INTO THE hosts FILE')
     for el in config['Proxied'].values():
         host, port, host_ip = el.split()
         port = int(port)
         server = TransparentProxyServer(host, port, host_ip, proxy_host, proxy_port,
-                                        upstream_proxy_type='socks5')
+                                        upstream_proxy_type=upstream_proxy_type)
         bind_host = socket.inet_ntoa(int.to_bytes(addr, byteorder='big', length=4))
         tasks.append(asyncio.create_task(server.run_forever(host=bind_host, port=port)))
         addr += 1

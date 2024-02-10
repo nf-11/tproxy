@@ -1,6 +1,5 @@
 import asyncio
 import socket
-from typing import Literal
 
 import tcp
 import tcp_server
@@ -9,8 +8,8 @@ import tcp_server
 class TransparentProxyServer(tcp_server.TCPServer):
     def __init__(self, proxied_host: str, proxied_port: int, proxied_host_ip: str,
                  proxy_host: str, proxy_port: int,
-                 upstream_proxy_type: Literal['socks5', 'https'] = 'socks5', timeout: float = 5.0,
-                 use_hostname: bool = False):
+                 upstream_proxy_type: str = 'https', timeout: float = 5.0,
+                 use_hostname: bool = True):
         super().__init__()
         self.proxied_host = proxied_host
         self.proxied_port = proxied_port
@@ -34,7 +33,7 @@ class TransparentProxyServer(tcp_server.TCPServer):
             s_to.write(data)
 
     async def _http_connect(self, connection: tcp.TCPStream):
-        host = self.proxied_host if self.use_hostname else self.proxy_host
+        host = self.proxied_host if self.use_hostname else self.proxied_host_ip
         connection.write(f'CONNECT {host}:{self.proxied_port} HTTP/1.0\r\n\r\n'.encode())
         response = (await self._wait_for(connection.read_line())).strip().decode()
         response = response.split(' ')
@@ -42,9 +41,8 @@ class TransparentProxyServer(tcp_server.TCPServer):
         http_code = int(http_code)
         if http_code < 200 or http_code > 299:
             raise ConnectionError(f"Server returned non-200 code: {http_code}")
-        line = (await self._wait_for(connection.read_line())).strip()
-        if line:
-            raise NotImplementedError(f"Headers are not implemented")
+        while (await self._wait_for(connection.read_line())).strip():
+            pass
 
     async def _socks5_handshake(self, connection: tcp.TCPStream):
         connection.write(b'\x05\x01\x00')
