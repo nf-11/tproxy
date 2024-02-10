@@ -49,7 +49,7 @@ class TransparentProxyServer(tcp_server.TCPServer):
     async def _socks5_handshake(self, connection: tcp.TCPStream):
         connection.write(b'\x05\x01\x00')
         if (await self._wait_for(connection.read(2))) != b'\x05\x00':
-            raise RuntimeError("Bad SOCKS5 Server Choice")
+            raise ConnectionError("Bad SOCKS5 Server Choice")
         connection.write(b'\x05\x01\x00')
         if self.use_hostname:
             connection.write(b'\x03')
@@ -62,7 +62,7 @@ class TransparentProxyServer(tcp_server.TCPServer):
         connection.write(self.proxied_port.to_bytes(length=2, byteorder='big'))
         _ver, status, _rsv = await self._wait_for(connection.read(3))
         if status:
-            raise RuntimeError(f"SOCKS5 connection error ({status})")
+            raise ConnectionError(f"SOCKS5 connection error ({status})")
         addr_type = int.from_bytes(await self._wait_for(connection.read(1)), byteorder='big')
         if addr_type == 1:
             await self._wait_for(connection.read(4))
@@ -72,7 +72,7 @@ class TransparentProxyServer(tcp_server.TCPServer):
         elif addr_type == 4:
             await self._wait_for(connection.read(16))
         else:
-            raise RuntimeError(f"Unknown address type ({addr_type})")
+            raise ConnectionError(f"Unknown address type ({addr_type})")
         await self._wait_for(connection.read(2))
 
     async def on_connect(self, connection: tcp.TCPStream):
